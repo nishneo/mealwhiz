@@ -2,30 +2,26 @@
 'use server';
 
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import type { MealItems } from '@/lib/types';
 import { INITIAL_MEAL_ITEMS } from '@/lib/data';
 
+// Everyone shares a single meal-items document. The app is designed to be
+// usable without login, so we intentionally do not key by user.
 const MEAL_ITEMS_COLLECTION = 'meal-data';
+const SHARED_DOC_ID = 'shared';
 
 export async function getMealItems(): Promise<MealItems> {
-    const userId = auth.currentUser?.uid;
-    if (!userId) {
-      console.warn("User not authenticated yet in getMealItems. Returning initial data.");
-      return INITIAL_MEAL_ITEMS;
-    }
-    
     try {
-        const docRef = doc(db, MEAL_ITEMS_COLLECTION, userId);
+        const docRef = doc(db, MEAL_ITEMS_COLLECTION, SHARED_DOC_ID);
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
             return docSnap.data() as MealItems;
-        } else {
-            // Pre-warm the database for a new user
-            await setDoc(docRef, INITIAL_MEAL_ITEMS);
-            return INITIAL_MEAL_ITEMS;
         }
+        // Pre-warm the shared document on first run.
+        await setDoc(docRef, INITIAL_MEAL_ITEMS);
+        return INITIAL_MEAL_ITEMS;
     } catch (error) {
         console.error("Error fetching meal items from Firestore, returning initial data.", error);
         return INITIAL_MEAL_ITEMS;
@@ -33,15 +29,8 @@ export async function getMealItems(): Promise<MealItems> {
 }
 
 export async function saveMealItems(mealItems: MealItems): Promise<void> {
-    const userId = auth.currentUser?.uid;
-    if (!userId) {
-        console.warn("User not authenticated. Cannot save meal items.");
-        // Instead of throwing, we just return. The UI should prevent this.
-        return;
-    }
-
     try {
-        const docRef = doc(db, MEAL_ITEMS_COLLECTION, userId);
+        const docRef = doc(db, MEAL_ITEMS_COLLECTION, SHARED_DOC_ID);
         await setDoc(docRef, mealItems);
     } catch(error) {
         console.error("Error saving meal items to Firestore.", error);
