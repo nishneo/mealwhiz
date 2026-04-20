@@ -96,10 +96,11 @@ function MealWhizContent() {
             if (storedPlanData && storedPlanData.plan.length > 0) {
                 setMealPlan(storedPlanData.plan);
                 setPlanStartDate(storedPlanData.startDate);
-            } else {
-                // If no plan exists, generate one automatically.
-                await handleGenerateNewPlan(items);
             }
+            // If no plan exists, leave it empty — the user can click
+            // "Generate New Plan" in the header to create one on demand.
+            // We intentionally do NOT auto-invoke the AI here to avoid
+            // burning API quota on every first page load.
         } catch (error) {
             console.error("Error during initial data load:", error);
             toast({
@@ -195,7 +196,7 @@ function MealWhizContent() {
     }
   };
   
-  if (authLoading || isLoading || !mealPlan || !mealItems) {
+  if (authLoading || isLoading || !mealItems) {
     return <Loading />;
   }
 
@@ -215,16 +216,26 @@ function MealWhizContent() {
             loading={isGeneratingPlan || !isDataReady}
           />
           <main className="flex-1 p-4 md:p-6">
-              <MealPlanDisplay
-                plan={mealPlan}
-                startDate={planStartDate ? new Date(planStartDate) : new Date()}
-                todayIndex={todayIndex}
-                availableMeals={mealItems}
-                onUpdateMeal={handleUpdateMeal}
-                onRefreshMeal={handleRefreshSingleMeal}
-                isUpdatingMeal={isUpdatingMeal}
-                loading={isGeneratingPlan || authLoading}
-              />
+              {mealPlan ? (
+                <MealPlanDisplay
+                  plan={mealPlan}
+                  startDate={planStartDate ? new Date(planStartDate) : new Date()}
+                  todayIndex={todayIndex}
+                  availableMeals={mealItems}
+                  onUpdateMeal={handleUpdateMeal}
+                  onRefreshMeal={handleRefreshSingleMeal}
+                  isUpdatingMeal={isUpdatingMeal}
+                  loading={isGeneratingPlan || authLoading}
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center text-center py-24 gap-4">
+                  <h2 className="text-2xl font-semibold">No meal plan yet</h2>
+                  <p className="text-muted-foreground max-w-md">
+                    Click “Generate New Plan” in the header to create your first
+                    two-week meal plan.
+                  </p>
+                </div>
+              )}
           </main>
         </div>
       </SidebarInset>
